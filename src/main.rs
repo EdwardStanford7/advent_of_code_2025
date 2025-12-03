@@ -100,29 +100,29 @@ fn day_2() {
 }
 
 fn day_3() {
-    fn largest_ordered_digits<'a>(
-        batteries: &'a [u64],
+    fn largest_ordered_digits(
+        digits: &[u64],
         num_digits: u8,
-        memo_table: &mut HashMap<(&'a [u64], u8), u64>,
+        memo_table: &mut HashMap<(*const [u64], u8), u64>,
     ) -> u64 {
-        if let Some(cached) = memo_table.get(&(batteries, num_digits)) {
+        if let Some(cached) = memo_table.get(&(digits, num_digits)) {
             return *cached;
         }
 
         if num_digits == 1 {
-            return *batteries.iter().max().unwrap();
+            return *digits.iter().max().unwrap();
         }
 
         let mut max = 0;
-        for i in 0..(batteries.len() - (num_digits as usize) + 1) {
-            let max_from_here = batteries[i] * 10u64.pow(num_digits as u32 - 1)
-                + largest_ordered_digits(&batteries[(i + 1)..], num_digits - 1, memo_table);
+        for i in 0..(digits.len() - (num_digits as usize) + 1) {
+            let max_from_here = digits[i] * 10u64.pow(num_digits as u32 - 1)
+                + largest_ordered_digits(&digits[(i + 1)..], num_digits - 1, memo_table);
             if max_from_here > max {
                 max = max_from_here;
             }
         }
 
-        memo_table.insert((batteries, num_digits), max);
+        memo_table.insert((digits, num_digits), max);
 
         max
     }
@@ -134,7 +134,7 @@ fn day_3() {
     let mut total_joltage_part_2: u64 = 0;
 
     for bank in battery_banks.lines() {
-        let digits = bank
+        let batteries = bank
             .chars()
             .map(|digit| {
                 digit
@@ -143,10 +143,10 @@ fn day_3() {
             })
             .collect::<Vec<u64>>();
 
-        let max_part_1 = largest_ordered_digits(digits.as_slice(), 2, &mut HashMap::new());
+        let max_part_1 = largest_ordered_digits(batteries.as_slice(), 2, &mut HashMap::new());
         total_joltage_part_1 += max_part_1;
 
-        let max_part_2 = largest_ordered_digits(digits.as_slice(), 12, &mut HashMap::new());
+        let max_part_2 = largest_ordered_digits(batteries.as_slice(), 12, &mut HashMap::new());
         total_joltage_part_2 += max_part_2;
     }
 
