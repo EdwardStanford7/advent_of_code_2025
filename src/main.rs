@@ -1,7 +1,10 @@
+use std::collections::HashMap;
+
 fn main() {
     println!("Advent of Code 2025");
-    day_1();
-    day_2();
+    // day_1();
+    // day_2();
+    day_3();
 }
 
 fn day_1() {
@@ -94,4 +97,58 @@ fn day_2() {
     }
 
     println!("Day 2: \n\tPart 1 {id_sum_part_1}\n\tPart 2 {id_sum_part_2}");
+}
+
+fn day_3() {
+    fn largest_ordered_digits<'a>(
+        batteries: &'a [u64],
+        num_digits: u8,
+        memo_table: &mut HashMap<(&'a [u64], u8), u64>,
+    ) -> u64 {
+        if let Some(cached) = memo_table.get(&(batteries, num_digits)) {
+            return *cached;
+        }
+
+        if num_digits == 1 {
+            return *batteries.iter().max().unwrap();
+        }
+
+        let mut max = 0;
+        for i in 0..(batteries.len() - (num_digits as usize) + 1) {
+            let max_from_here = batteries[i] * 10u64.pow(num_digits as u32 - 1)
+                + largest_ordered_digits(&batteries[(i + 1)..], num_digits - 1, memo_table);
+            if max_from_here > max {
+                max = max_from_here;
+            }
+        }
+
+        memo_table.insert((batteries, num_digits), max);
+
+        max
+    }
+
+    let battery_banks =
+        std::fs::read_to_string("inputs/day_3.txt").expect("Failed to read input file");
+
+    let mut total_joltage_part_1: u64 = 0;
+    let mut total_joltage_part_2: u64 = 0;
+
+    for bank in battery_banks.lines() {
+        let digits = bank
+            .chars()
+            .map(|digit| {
+                digit
+                    .to_digit(10)
+                    .expect("couldn't convert input to number") as u64
+            })
+            .collect::<Vec<u64>>();
+
+        let max_part_1 = largest_ordered_digits(digits.as_slice(), 2, &mut HashMap::new());
+        total_joltage_part_1 += max_part_1;
+
+        let max_part_2 = largest_ordered_digits(digits.as_slice(), 12, &mut HashMap::new());
+        total_joltage_part_2 += max_part_2;
+    }
+
+    println!("Day 3: \n\tPart 1 {total_joltage_part_1}\n\tPart 2 {total_joltage_part_2}");
 }
