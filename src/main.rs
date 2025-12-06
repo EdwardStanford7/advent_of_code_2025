@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+pub mod memoizer;
+
 fn main() {
     println!("Advent of Code 2025");
     day_1();
@@ -99,13 +101,19 @@ fn day_2() {
     println!("Day 2: \n\tPart 1 {id_sum_part_1}\n\tPart 2 {id_sum_part_2}");
 }
 
+// Safe memoizer
+use memoizer::{Memoizer, HashRef};
+type MyMemoizer<'a> = Memoizer<(HashRef<'a, [u8]>, u8), u64>;
+
 fn day_3() {
-    fn largest_ordered_digits(
-        digits: &[u8],
+    fn largest_ordered_digits<'a, 'b>(
+        digits: &'a [u8],
         num_digits: u8,
-        memo_table: &mut HashMap<(*const [u8], u8), u64>,
+        memo_table: &'b mut MyMemoizer<'a>,
     ) -> u64 {
-        if let Some(cached) = memo_table.get(&(digits, num_digits)) {
+        let memo_key = (HashRef { _ref: digits }, num_digits);
+
+        if let Some(cached) = memo_table.get(&memo_key) {
             return *cached;
         }
 
@@ -122,7 +130,7 @@ fn day_3() {
             }
         }
 
-        memo_table.insert((digits, num_digits), max);
+        memo_table.insert(memo_key, max);
 
         max
     }
@@ -143,11 +151,11 @@ fn day_3() {
             })
             .collect::<Vec<u8>>();
 
-        total_joltage_part_1 +=
-            largest_ordered_digits(batteries.as_slice(), 2, &mut HashMap::new());
+        let max_part_1 = largest_ordered_digits(batteries.as_slice(), 2, &mut MyMemoizer::new());
+        total_joltage_part_1 += max_part_1;
 
-        total_joltage_part_2 +=
-            largest_ordered_digits(batteries.as_slice(), 12, &mut HashMap::new());
+        let max_part_2 = largest_ordered_digits(batteries.as_slice(), 12, &mut MyMemoizer::new());
+        total_joltage_part_2 += max_part_2;
     }
 
     println!("Day 3: \n\tPart 1 {total_joltage_part_1}\n\tPart 2 {total_joltage_part_2}");
