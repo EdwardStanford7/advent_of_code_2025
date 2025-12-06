@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 fn main() {
     println!("Advent of Code 2025");
-    // day_1();
-    // day_2();
+    day_1();
+    day_2();
     day_3();
 }
 
@@ -101,21 +101,21 @@ fn day_2() {
 
 fn day_3() {
     fn largest_ordered_digits(
-        digits: &[u64],
+        digits: &[u8],
         num_digits: u8,
-        memo_table: &mut HashMap<(*const [u64], u8), u64>,
+        memo_table: &mut HashMap<(*const [u8], u8), u64>,
     ) -> u64 {
         if let Some(cached) = memo_table.get(&(digits, num_digits)) {
             return *cached;
         }
 
         if num_digits == 1 {
-            return *digits.iter().max().unwrap();
+            return *digits.iter().max().unwrap() as u64;
         }
 
         let mut max = 0;
         for i in 0..(digits.len() - (num_digits as usize) + 1) {
-            let max_from_here = digits[i] * 10u64.pow(num_digits as u32 - 1)
+            let max_from_here = digits[i] as u64 * 10u64.pow(num_digits as u32 - 1)
                 + largest_ordered_digits(&digits[(i + 1)..], num_digits - 1, memo_table);
             if max_from_here > max {
                 max = max_from_here;
@@ -139,15 +139,15 @@ fn day_3() {
             .map(|digit| {
                 digit
                     .to_digit(10)
-                    .expect("couldn't convert input to number") as u64
+                    .expect("couldn't convert input to number") as u8
             })
-            .collect::<Vec<u64>>();
+            .collect::<Vec<u8>>();
 
-        let max_part_1 = largest_ordered_digits(batteries.as_slice(), 2, &mut HashMap::new());
-        total_joltage_part_1 += max_part_1;
+        total_joltage_part_1 +=
+            largest_ordered_digits(batteries.as_slice(), 2, &mut HashMap::new());
 
-        let max_part_2 = largest_ordered_digits(batteries.as_slice(), 12, &mut HashMap::new());
-        total_joltage_part_2 += max_part_2;
+        total_joltage_part_2 +=
+            largest_ordered_digits(batteries.as_slice(), 12, &mut HashMap::new());
     }
 
     println!("Day 3: \n\tPart 1 {total_joltage_part_1}\n\tPart 2 {total_joltage_part_2}");
