@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 pub mod memoizer;
 
 fn main() {
@@ -102,14 +100,14 @@ fn day_2() {
 }
 
 // Safe memoizer
-use memoizer::{Memoizer, HashRef};
+use memoizer::{HashRef, Memoizer};
 type MyMemoizer<'a> = Memoizer<(HashRef<'a, [u8]>, u8), u64>;
 
 fn day_3() {
-    fn largest_ordered_digits<'a, 'b>(
+    fn largest_ordered_digits<'a>(
         digits: &'a [u8],
         num_digits: u8,
-        memo_table: &'b mut MyMemoizer<'a>,
+        memo_table: &mut MyMemoizer<'a>,
     ) -> u64 {
         let memo_key = (HashRef { _ref: digits }, num_digits);
 
