@@ -2,7 +2,7 @@ pub struct Day7;
 
 impl crate::Day for Day7 {
     fn run(input: String) -> crate::DayResult {
-        let tachyon_manifold =
+        let mut tachyon_manifold =
             TachyonManifold::new(input.lines().map(|line| line.chars().collect()).collect());
 
         let (splits, timelines) = tachyon_manifold.run_beam();
@@ -38,17 +38,16 @@ impl TachyonManifold {
     }
 
     // Runs the tachyon beam through the manifold, returning the number of splits and timelines.
-    fn run_beam(&self) -> (u64, u64) {
+    fn run_beam(&mut self) -> (u64, u64) {
         let mut num_splits = 0;
-        let mut grid_copy = self.grid.clone();
         for i in 0..(self.grid.len() - 1) {
-            let (first, second) = grid_copy.split_at_mut(i + 1);
-            num_splits += self.process_row(&first[i], &mut second[0]);
+            let (first, second) = self.grid.split_at_mut(i + 1);
+            num_splits += Self::process_row(&first[i], &mut second[0]);
         }
 
         (
             num_splits,
-            grid_copy.last().unwrap().iter().fold(0, |acc, space| {
+            self.grid.last().unwrap().iter().fold(0, |acc, space| {
                 if let GridSpace::TachyonBeam(timelines) = space {
                     acc + timelines
                 } else {
@@ -58,7 +57,7 @@ impl TachyonManifold {
         )
     }
 
-    fn process_row(&self, current_row: &[GridSpace], next_row: &mut [GridSpace]) -> u64 {
+    fn process_row(current_row: &[GridSpace], next_row: &mut [GridSpace]) -> u64 {
         let mut splits = 0;
         for (index, space) in current_row.iter().enumerate() {
             if let GridSpace::TachyonBeam(timelines) = space {
