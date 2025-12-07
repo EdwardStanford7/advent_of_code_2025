@@ -1,32 +1,39 @@
-// Safe memoizer
 use crate::memoizer::{HashRef, Memoizer};
 type MyMemoizer<'a> = Memoizer<(HashRef<'a, [u8]>, u8), u64>;
 
-pub fn run() {
-    let battery_banks =
-        std::fs::read_to_string("inputs/day_3.txt").expect("Failed to read input file");
+pub struct Day3;
 
-    let mut total_joltage_part_1: u64 = 0;
-    let mut total_joltage_part_2: u64 = 0;
+impl crate::Day for Day3 {
+    fn run(input: String) -> crate::DayResult {
+        let battery_banks = input;
 
-    for bank in battery_banks.lines() {
-        let batteries = bank
-            .chars()
-            .map(|digit| {
-                digit
-                    .to_digit(10)
-                    .expect("couldn't convert input to number") as u8
-            })
-            .collect::<Vec<u8>>();
+        let mut total_joltage_part_1: u64 = 0;
+        let mut total_joltage_part_2: u64 = 0;
 
-        let max_part_1 = largest_ordered_digits(batteries.as_slice(), 2, &mut MyMemoizer::new());
-        total_joltage_part_1 += max_part_1;
+        for bank in battery_banks.lines() {
+            let batteries = bank
+                .chars()
+                .map(|digit| {
+                    digit
+                        .to_digit(10)
+                        .expect("couldn't convert input to number") as u8
+                })
+                .collect::<Vec<u8>>();
 
-        let max_part_2 = largest_ordered_digits(batteries.as_slice(), 12, &mut MyMemoizer::new());
-        total_joltage_part_2 += max_part_2;
+            let max_part_1 =
+                largest_ordered_digits(batteries.as_slice(), 2, &mut MyMemoizer::new());
+            total_joltage_part_1 += max_part_1;
+
+            let max_part_2 =
+                largest_ordered_digits(batteries.as_slice(), 12, &mut MyMemoizer::new());
+            total_joltage_part_2 += max_part_2;
+        }
+
+        crate::DayResult {
+            part_1: total_joltage_part_1,
+            part_2: total_joltage_part_2,
+        }
     }
-
-    println!("Day 3: \n\tPart 1 {total_joltage_part_1}\n\tPart 2 {total_joltage_part_2}");
 }
 
 fn largest_ordered_digits<'a>(

@@ -1,13 +1,13 @@
-pub fn run() {
-    let mut grid = PaperRollGrid::new(
-        std::fs::read_to_string("inputs/day_4.txt").expect("Failed to read input file"),
-    );
+pub struct Day4;
 
-    println!(
-        "Day 4: \n\tPart 1 {}\n\tPart 2 {}",
-        grid.count_accessible_rolls(),
-        grid.remove_rolls()
-    );
+impl crate::Day for Day4 {
+    fn run(input: String) -> crate::DayResult {
+        let mut grid = PaperRollGrid::new(input);
+        crate::DayResult {
+            part_1: grid.count_accessible_rolls(),
+            part_2: grid.remove_rolls(),
+        }
+    }
 }
 
 struct PaperRollGrid {

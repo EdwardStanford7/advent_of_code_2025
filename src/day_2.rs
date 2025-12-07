@@ -1,30 +1,36 @@
-pub fn run() {
-    let input = std::fs::read_to_string("inputs/day_2.txt").expect("Failed to read input file");
-    let id_ranges = input.split(",");
+pub struct Day2;
 
-    let mut id_sum_part_1 = 0;
-    let mut id_sum_part_2 = 0;
+impl crate::Day for Day2 {
+    fn run(input: String) -> crate::DayResult {
+        let id_ranges = input.split(",");
 
-    for range in id_ranges {
-        let (start, end) = range
-            .trim()
-            .split_once("-")
-            .expect("Failed to parse ID range");
+        let mut id_sum_part_1 = 0;
+        let mut id_sum_part_2 = 0;
 
-        let start_id: u64 = start.parse().expect("Failed to parse start ID");
-        let end_id: u64 = end.parse().expect("Failed to parse end ID");
+        for range in id_ranges {
+            let (start, end) = range
+                .trim()
+                .split_once("-")
+                .expect("Failed to parse ID range");
 
-        for id in start_id..=end_id {
-            if is_invalid_id_part_1(id.to_string()) {
-                id_sum_part_1 += id;
-            }
-            if is_invalid_id_part_2(id.to_string()) {
-                id_sum_part_2 += id;
+            let start_id: u64 = start.parse().expect("Failed to parse start ID");
+            let end_id: u64 = end.parse().expect("Failed to parse end ID");
+
+            for id in start_id..=end_id {
+                if is_invalid_id_part_1(id.to_string()) {
+                    id_sum_part_1 += id;
+                }
+                if is_invalid_id_part_2(id.to_string()) {
+                    id_sum_part_2 += id;
+                }
             }
         }
-    }
 
-    println!("Day 2: \n\tPart 1 {id_sum_part_1}\n\tPart 2 {id_sum_part_2}");
+        crate::DayResult {
+            part_1: id_sum_part_1,
+            part_2: id_sum_part_2,
+        }
+    }
 }
 
 fn is_invalid_id_part_1(id: String) -> bool {
