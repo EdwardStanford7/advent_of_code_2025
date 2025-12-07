@@ -18,7 +18,7 @@ where
     pub _ref: &'a T,
 }
 
-impl <'a, T> Clone for HashRef<'a, T>
+impl<'a, T> Clone for HashRef<'a, T>
 where
     T: ?Sized,
 {
@@ -39,10 +39,7 @@ where
     }
 }
 
-impl<'a, T> Eq for HashRef<'a, T>
-where
-    T: ?Sized,
-{}
+impl<'a, T> Eq for HashRef<'a, T> where T: ?Sized {}
 
 impl<'a, T> std::hash::Hash for HashRef<'a, T>
 where
@@ -58,22 +55,32 @@ pub struct Memoizer<U, T> {
     table: HashMap<U, T>,
 }
 
+impl<U, T> Default for Memoizer<U, T>
+where
+    U: std::hash::Hash + Eq + Clone,
+    T: Clone,
+{
+    fn default() -> Self {
+        Memoizer {
+            table: HashMap::new(),
+        }
+    }
+}
+
 impl<U, T> Memoizer<U, T>
 where
     U: std::hash::Hash + Eq + Clone,
     T: Clone,
 {
     pub fn new() -> Self {
-        Memoizer {
-            table: HashMap::new(),
-        }
+        Self::default()
     }
 
-    pub fn get<'a, 'b>(&'b self, element: &'a U) -> Option<&'b T> {
+    pub fn get<'b>(&'b self, element: &U) -> Option<&'b T> {
         self.table.get(element)
     }
 
-    pub fn insert<'b>(&'b mut self, element: U, value: T) {
+    pub fn insert(&mut self, element: U, value: T) {
         self.table.insert(element, value);
     }
 }
