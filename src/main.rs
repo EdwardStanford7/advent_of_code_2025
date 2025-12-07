@@ -3,6 +3,7 @@ pub mod day_2;
 pub mod day_3;
 pub mod day_4;
 pub mod day_5;
+pub mod day_6;
 pub mod memoizer;
 
 fn main() {
@@ -12,4 +13,5 @@ fn main() {
     day_3::run();
     day_4::run();
     day_5::run();
+    day_6::run();
 }
