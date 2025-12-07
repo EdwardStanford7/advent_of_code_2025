@@ -5,3 +5,12 @@ version = 4
 [[package]]
 name = "advent_of_code_2025"
 version = "0.1.0"
+dependencies = [
+ "rangetools",
+]
+
+[[package]]
+name = "rangetools"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e6e97ca3dbabd81e6033cfe09f0cef37c89f34f2a9223cab7cf99305d46a9633"
