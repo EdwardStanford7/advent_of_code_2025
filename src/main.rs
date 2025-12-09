@@ -5,6 +5,7 @@ pub mod day_4;
 pub mod day_5;
 pub mod day_6;
 pub mod day_7;
+pub mod day_8;
 pub mod memoizer;
 
 use day_1::Day1;
@@ -14,6 +15,7 @@ use day_4::Day4;
 use day_5::Day5;
 use day_6::Day6;
 use day_7::Day7;
+use day_8::Day8;
 
 pub trait Day {
     fn run(input: String) -> DayResult;
@@ -46,6 +48,7 @@ fn main() {
         DayInfo::new(5, Day5::run),
         DayInfo::new(6, Day6::run),
         DayInfo::new(7, Day7::run),
+        DayInfo::new(8, Day8::run),
     ];
 
     for day_info in days {

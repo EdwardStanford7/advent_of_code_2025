@@ -34,7 +34,7 @@ impl crate::Day for Day2 {
 }
 
 fn is_invalid_id_part_1(id: String) -> bool {
-    if id.len() % 2 != 0 {
+    if !id.len().is_multiple_of(2) {
         return false;
     }
 
@@ -44,7 +44,7 @@ fn is_invalid_id_part_1(id: String) -> bool {
 
 fn is_invalid_id_part_2(id: String) -> bool {
     for factor in 2..=id.len() {
-        if id.len() % factor != 0 {
+        if !id.len().is_multiple_of(factor) {
             continue;
         }
         let substring_length = id.len() / factor;
