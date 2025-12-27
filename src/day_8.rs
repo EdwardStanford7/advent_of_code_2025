@@ -79,7 +79,8 @@ impl crate::Day for Day8 {
     }
 }
 
-// Order all possible pairs in the list by distance
+// Order all possible pairs in the list by distance.
+// Brute force implementation because I'm lazy and input size is small.
 fn closest_pairs(junctions: &[JunctionBox]) -> Vec<(usize, usize)> {
     let mut distances = Vec::new();
 
