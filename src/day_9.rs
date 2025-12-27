@@ -17,22 +17,22 @@ impl crate::Day for Day9 {
 
         let polygon = Polygon::new(red_tiles);
 
-        let mut max_size_part1 = 0;
-        let mut max_size_part2 = 0;
-        let mut max_rectangle = (&Point { x: 0, y: 0 }, &Point { x: 0, y: 0 });
+        let mut max_area_part1 = 0;
+        let mut max_area_part2 = 0;
+        let mut max_rectangle = (&Point::origin(), &Point::origin());
 
         for tile1 in polygon.vertices.iter() {
             for tile2 in polygon.vertices.iter() {
                 let dx = (tile1.x - tile2.x).unsigned_abs() as u64 + 1;
                 let dy = (tile1.y - tile2.y).unsigned_abs() as u64 + 1;
 
-                let rectangle_size = dx * dy;
-                if rectangle_size > max_size_part1 {
-                    max_size_part1 = rectangle_size;
+                let rectangle_area = dx * dy;
+                if rectangle_area > max_area_part1 {
+                    max_area_part1 = rectangle_area;
                 }
 
-                if polygon.is_valid_rectangle(tile1, tile2) && rectangle_size > max_size_part2 {
-                    max_size_part2 = rectangle_size;
+                if rectangle_area > max_area_part2 && polygon.is_valid_rectangle(tile1, tile2) {
+                    max_area_part2 = rectangle_area;
                     max_rectangle = (tile1, tile2);
                 }
             }
@@ -45,8 +45,8 @@ impl crate::Day for Day9 {
         println!("\n\n{}\n\n", Grid::new(&polygon.vertices));
 
         crate::DayResult {
-            part_1: max_size_part1,
-            part_2: max_size_part2,
+            part_1: max_area_part1,
+            part_2: max_area_part2,
         }
     }
 }
@@ -55,6 +55,50 @@ impl crate::Day for Day9 {
 struct Point {
     x: i32,
     y: i32,
+}
+
+impl Point {
+    fn origin() -> Self {
+        Point { x: 0, y: 0 }
+    }
+
+    fn get_surrounding_points(&self) -> Vec<Self> {
+        vec![
+            Point {
+                x: self.x - 1,
+                y: self.y - 1,
+            },
+            Point {
+                x: self.x - 1,
+                y: self.y,
+            },
+            Point {
+                x: self.x - 1,
+                y: self.y + 1,
+            },
+            Point {
+                x: self.x,
+                y: self.y - 1,
+            },
+            self.clone(),
+            Point {
+                x: self.x,
+                y: self.y + 1,
+            },
+            Point {
+                x: self.x + 1,
+                y: self.y - 1,
+            },
+            Point {
+                x: self.x + 1,
+                y: self.y,
+            },
+            Point {
+                x: self.x + 1,
+                y: self.y + 1,
+            },
+        ]
+    }
 }
 
 struct Polygon {
@@ -70,53 +114,15 @@ impl Polygon {
         for i in 0..vertices.len() - 1 {
             segments.push((vertices[i].clone(), vertices[i + 1].clone()));
 
-            polygon_event_points.extend(Self::get_surrounding_points(&vertices[i]));
+            polygon_event_points.extend(vertices[i].get_surrounding_points());
         }
         segments.push((vertices[vertices.len() - 1].clone(), vertices[0].clone()));
-        polygon_event_points.extend(Self::get_surrounding_points(&vertices[vertices.len() - 1]));
+        polygon_event_points.extend(vertices[vertices.len() - 1].get_surrounding_points());
         Self {
             vertices,
             segments,
             polygon_event_points,
         }
-    }
-
-    fn get_surrounding_points(p1: &Point) -> Vec<Point> {
-        vec![
-            Point {
-                x: p1.x - 1,
-                y: p1.y - 1,
-            },
-            Point {
-                x: p1.x - 1,
-                y: p1.y,
-            },
-            Point {
-                x: p1.x - 1,
-                y: p1.y + 1,
-            },
-            Point {
-                x: p1.x,
-                y: p1.y - 1,
-            },
-            Point { x: p1.x, y: p1.y },
-            Point {
-                x: p1.x,
-                y: p1.y + 1,
-            },
-            Point {
-                x: p1.x + 1,
-                y: p1.y - 1,
-            },
-            Point {
-                x: p1.x + 1,
-                y: p1.y,
-            },
-            Point {
-                x: p1.x + 1,
-                y: p1.y + 1,
-            },
-        ]
     }
 
     pub fn is_valid_rectangle(&self, tile1: &Point, tile2: &Point) -> bool {
@@ -189,10 +195,13 @@ impl Polygon {
              ((p1.y <= point.y && point.y < p2.y)||(p2.y <= point.y && point.y < p1.y))
             {
                 num_intersections += 1;
-                new_event_points.extend(Self::get_surrounding_points(&Point {
-                    x: point.x,
-                    y: p1.y,
-                }));
+                new_event_points.extend(
+                    Point {
+                        x: point.x,
+                        y: p1.y,
+                    }
+                    .get_surrounding_points(),
+                );
             }
         }
 
