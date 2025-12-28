@@ -19,7 +19,6 @@ impl crate::Day for Day9 {
 
         let mut max_area_part1 = 0;
         let mut max_area_part2 = 0;
-        let mut max_rectangle = (&Point::origin(), &Point::origin());
 
         for tile1 in polygon.vertices.iter() {
             for tile2 in polygon.vertices.iter() {
@@ -33,16 +32,9 @@ impl crate::Day for Day9 {
 
                 if rectangle_area > max_area_part2 && polygon.is_valid_rectangle(tile1, tile2) {
                     max_area_part2 = rectangle_area;
-                    max_rectangle = (tile1, tile2);
                 }
             }
         }
-
-        println!(
-            "Max rectangle: {:?} to {:?}",
-            max_rectangle.0, max_rectangle.1
-        );
-        println!("\n\n{}\n\n", Grid::new(&polygon.vertices));
 
         crate::DayResult {
             part_1: max_area_part1,
@@ -58,10 +50,6 @@ struct Point {
 }
 
 impl Point {
-    fn origin() -> Self {
-        Point { x: 0, y: 0 }
-    }
-
     fn get_surrounding_points(&self) -> Vec<Self> {
         vec![
             Point {
@@ -126,67 +114,106 @@ impl Polygon {
     }
 
     pub fn is_valid_rectangle(&self, tile1: &Point, tile2: &Point) -> bool {
-        let range = if tile1.x < tile2.x {
-            if tile1.y < tile2.y {
-                (tile1.x, tile2.x, tile1.y, tile2.y)
-            } else {
-                (tile1.x, tile2.x, tile2.y, tile1.y)
-            }
-        } else if tile1.y < tile2.y {
-            (tile2.x, tile1.x, tile1.y, tile2.y)
-        } else {
-            (tile2.x, tile1.x, tile2.y, tile1.y)
-        };
-
-        self.range_inside(range.0, range.1, range.2, range.3)
+        self.range_inside(
+            &Point {
+                x: i32::min(tile1.x, tile2.x),
+                y: i32::min(tile1.y, tile2.y),
+            },
+            &Point {
+                x: i32::max(tile1.x, tile2.x),
+                y: i32::max(tile1.y, tile2.y),
+            },
+        )
     }
 
-    fn range_inside(&self, x1: i32, x2: i32, y1: i32, y2: i32) -> bool {
-        let mut new_event_points = HashSet::new();
-
+    fn range_inside(&self, top_left: &Point, bottom_right: &Point) -> bool {
         for point in self
             .polygon_event_points
             .iter()
-            // Only count event points that are actually in the rectangle we are checking
-            .filter(|point| x1 <= point.x && point.x <= x2 && y1 <= point.y && point.y <= y2)
+            .filter(|point| Self::inside_rectangle(point, top_left, bottom_right))
         {
-            let (inside, new_points) = self.inside_polygon(Point {
-                x: point.x,
-                y: point.y,
-            });
-            new_event_points.extend(new_points.into_iter());
-            if !inside {
+            if !self.inside_polygon(point) {
                 return false;
             }
         }
 
-        // for point in new_event_points
-        //     .iter()
-        //     .filter(|point| x1 <= point.x && point.x <= x2 && y1 <= point.y && point.y <= y2)
-        // {
-        //     if !self
-        //         .inside_polygon(Point {
-        //             x: point.x,
-        //             y: point.y,
-        //         })
-        //         .0
-        //     {
-        //         return false;
-        //     }
-        // }
+        for point in self
+            .get_rectangle_intersections(top_left, bottom_right)
+            .iter()
+            .filter(|point| Self::inside_rectangle(point, top_left, bottom_right))
+        {
+            if !self.inside_polygon(point) {
+                return false;
+            }
+        }
 
         true
     }
 
-    fn inside_polygon(&self, point: Point) -> (bool, HashSet<Point>) {
+    fn inside_rectangle(point: &Point, top_left: &Point, bottom_right: &Point) -> bool {
+        top_left.x <= point.x
+            && point.x <= bottom_right.x
+            && top_left.y <= point.y
+            && point.y <= bottom_right.y
+    }
+
+    fn get_rectangle_intersections(
+        &self,
+        top_left: &Point,
+        bottom_right: &Point,
+    ) -> HashSet<Point> {
+        let mut intersection_points = HashSet::new();
+
+        let left_x = top_left.x;
+        let right_x = bottom_right.x;
+        let top_y = top_left.y;
+        let bottom_y = bottom_right.y;
+
+        for (p1, p2) in &self.segments {
+            // Vertical polygon segment
+            if p1.x == p2.x {
+                let x = p1.x;
+                let y_min = p1.y.min(p2.y);
+                let y_max = p1.y.max(p2.y);
+
+                // Intersect with top edge
+                if x > left_x && x < right_x && top_y > y_min && top_y < y_max {
+                    intersection_points.extend(Point { x, y: top_y }.get_surrounding_points());
+                }
+
+                // Intersect with bottom edge
+                if x > left_x && x < right_x && bottom_y > y_min && bottom_y < y_max {
+                    intersection_points.extend(Point { x, y: bottom_y }.get_surrounding_points());
+                }
+            }
+            // Horizontal polygon segment
+            else {
+                let y = p1.y;
+                let x_min = p1.x.min(p2.x);
+                let x_max = p1.x.max(p2.x);
+
+                // Intersect with left edge
+                if y > top_y && y < bottom_y && left_x > x_min && left_x < x_max {
+                    intersection_points.extend(Point { x: left_x, y }.get_surrounding_points());
+                }
+
+                // Intersect with right edge
+                if y > top_y && y < bottom_y && right_x > x_min && right_x < x_max {
+                    intersection_points.extend(Point { x: right_x, y }.get_surrounding_points());
+                }
+            }
+        }
+
+        intersection_points
+    }
+
+    fn inside_polygon(&self, point: &Point) -> bool {
         let mut num_intersections = 0;
-        let mut new_event_points = HashSet::new();
-        let mut inside_segment = false;
 
         // Check if the point is inside any segment or if the ray intersects with any segment
         for (p1, p2) in self.segments.iter() {
-            if Self::point_inside_segment(&point, p1, p2) {
-                inside_segment = true;
+            if Self::point_inside_segment(point, p1, p2) {
+                return true;
             }
 
             if p1.y != p2.y && // Ignore horizontal segments
@@ -195,20 +222,10 @@ impl Polygon {
              ((p1.y <= point.y && point.y < p2.y)||(p2.y <= point.y && point.y < p1.y))
             {
                 num_intersections += 1;
-                new_event_points.extend(
-                    Point {
-                        x: point.x,
-                        y: p1.y,
-                    }
-                    .get_surrounding_points(),
-                );
             }
         }
 
-        (
-            inside_segment || num_intersections % 2 == 1,
-            new_event_points,
-        )
+        num_intersections % 2 == 1
     }
 
     fn point_inside_segment(point: &Point, segment_start: &Point, segment_end: &Point) -> bool {
@@ -221,137 +238,4 @@ impl Polygon {
                 && ((segment_start.x <= point.x && point.x <= segment_end.x)
                     || (segment_end.x <= point.x && point.x <= segment_start.x)))
     }
-}
-
-// fn get_point_after(
-//     point: &Point,
-//     segment_start: &Point,
-//     segment_end: &Point,
-//     direction: Direction,
-// ) -> Point {
-//     match direction {
-//         Direction::Up => Point {
-//             x: point.x,
-//             y: i32::min(segment_start.y, segment_end.y) - 1,
-//         },
-//         Direction::Down => Point {
-//             x: point.x,
-//             y: i32::max(segment_start.y, segment_end.y) + 1,
-//         },
-//         Direction::Left => Point {
-//             x: i32::min(segment_start.x, segment_end.x) - 1,
-//             y: point.y,
-//         },
-//         Direction::Right => Point {
-//             x: i32::max(segment_start.x, segment_end.x) + 1,
-//             y: point.y,
-//         },
-//     }
-// }
-
-// fn ray_intersects(
-//     origin: &Point,
-//     segment_start: &Point,
-//     segment_end: &Point,
-//     direction: Direction,
-// ) -> bool {
-//     match direction {
-//         Direction::Up => {
-//             segment_start.x != segment_end.x && // Ignore vertical segments
-//             origin.y < segment_start.y && // Origin is below horizontal segment
-//             ((segment_start.x <= origin.x && origin.x < segment_end.x) // Origin is within bounds of segment
-//                 || (segment_end.x <= origin.x && origin.x < segment_start.x)) // Count lower endpoints but not upper endpoints
-//         }
-//         Direction::Down => {
-//             segment_start.x != segment_end.x && // Ignore vertical segments
-//             origin.y > segment_start.y && // Origin is above horizontal segment
-//             ((segment_start.x <= origin.x && origin.x < segment_end.x) // Origin is within bounds of segment
-//                 || (segment_end.x <= origin.x && origin.x < segment_start.x)) // Count lower endpoints but not upper endpoints
-//         }
-//         Direction::Left => {
-//             segment_start.y != segment_end.y && // Ignore horizontal segments
-//             origin.x > segment_start.x && // Origin is to the right of vertical segment
-//             ((segment_start.y <= origin.y && origin.y < segment_end.y) // Origin is within bounds of segment
-//                 || (segment_end.y <= origin.y && origin.y < segment_start.y)) // Count lower endpoints but not upper endpoints
-//         }
-//         Direction::Right => {
-//             segment_start.y != segment_end.y && // Ignore horizontal segments
-//             origin.x > segment_start.x && // Origin is to the left of vertical segment
-//             ((segment_start.y <= origin.y && origin.y < segment_end.y) // Origin is within bounds of segment
-//                 || (segment_end.y <= origin.y && origin.y < segment_start.y)) // Count lower endpoints but not upper endpoints
-//         }
-//     }
-// }
-
-struct Grid {
-    grid: Vec<Vec<TileColor>>,
-}
-
-impl Grid {
-    pub fn new(red_tiles: &[Point]) -> Self {
-        // Make grid
-        let mut grid =
-            vec![
-                vec![TileColor::None; red_tiles.iter().map(|tile| tile.x).max().unwrap() as usize];
-                red_tiles.iter().map(|tile| tile.y).max().unwrap() as usize
-            ];
-
-        // Fill in outline
-        for i in 0..red_tiles.len() - 1 {
-            let tile1 = &red_tiles[i];
-            grid[tile1.y as usize - 1][tile1.x as usize - 1] = TileColor::Red;
-            let tile2 = &red_tiles[i + 1];
-
-            if tile1.x == tile2.x {
-                for y in (tile1.y.min(tile2.y) + 1)..tile1.y.max(tile2.y) {
-                    grid[y as usize - 1][tile1.x as usize - 1] = TileColor::Green;
-                }
-            } else {
-                for x in (tile1.x.min(tile2.x) + 1)..tile1.x.max(tile2.x) {
-                    grid[tile1.y as usize - 1][x as usize - 1] = TileColor::Green;
-                }
-            }
-        }
-
-        // Make last connection between first and last tiles
-        let tile1 = &red_tiles[red_tiles.len() - 1];
-        grid[tile1.y as usize - 1][tile1.x as usize - 1] = TileColor::Red;
-        let tile2 = &red_tiles[0];
-
-        if tile1.x == tile2.x {
-            for y in (tile1.y.min(tile2.y) + 1)..tile1.y.max(tile2.y) {
-                grid[y as usize - 1][tile1.x as usize - 1] = TileColor::Green;
-            }
-        } else {
-            for x in (tile1.x.min(tile2.x) + 1)..tile1.x.max(tile2.x) {
-                grid[tile1.y as usize - 1][x as usize - 1] = TileColor::Green;
-            }
-        }
-
-        Grid { grid }
-    }
-}
-
-impl std::fmt::Display for Grid {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for line in &self.grid {
-            for tile in line {
-                let c = match tile {
-                    TileColor::Red => "# ",
-                    TileColor::Green => "X ",
-                    TileColor::None => ". ",
-                };
-                write!(f, "{}", c)?;
-            }
-            writeln!(f)?;
-        }
-        Ok(())
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-enum TileColor {
-    Red,
-    Green,
-    None,
 }
