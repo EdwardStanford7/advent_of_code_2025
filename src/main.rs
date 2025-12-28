@@ -1,4 +1,5 @@
 mod day_1;
+mod day_10;
 mod day_2;
 mod day_3;
 mod day_4;
@@ -18,6 +19,7 @@ use day_6::Day6;
 use day_7::Day7;
 use day_8::Day8;
 use day_9::Day9;
+use day_10::Day10;
 
 pub trait Day {
     fn run(input: String) -> DayResult;
@@ -43,15 +45,16 @@ fn main() {
     println!("Advent of Code 2025");
 
     let days: &[DayInfo] = &[
-        DayInfo::new(1, Day1::run),
-        DayInfo::new(2, Day2::run),
-        DayInfo::new(3, Day3::run),
-        DayInfo::new(4, Day4::run),
-        DayInfo::new(5, Day5::run),
-        DayInfo::new(6, Day6::run),
-        DayInfo::new(7, Day7::run),
-        DayInfo::new(8, Day8::run),
-        DayInfo::new(9, Day9::run),
+        // DayInfo::new(1, Day1::run),
+        // DayInfo::new(2, Day2::run),
+        // DayInfo::new(3, Day3::run),
+        // DayInfo::new(4, Day4::run),
+        // DayInfo::new(5, Day5::run),
+        // DayInfo::new(6, Day6::run),
+        // DayInfo::new(7, Day7::run),
+        // DayInfo::new(8, Day8::run),
+        // DayInfo::new(9, Day9::run),
+        DayInfo::new(10, Day10::run),
     ];
 
     for day_info in days {
