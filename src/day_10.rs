@@ -57,55 +57,11 @@ impl crate::Day for Day10 {
             .fold(0, |acc, manual| acc + manual.min_buttons_lights());
 
         let part_2 = manuals.iter().fold(0, |acc, manual| {
-            acc + calculate_minimum_presses(&manual.buttons, &manual.joltage_requirements)
-                .iter()
-                .sum::<u64>()
+            acc + manual.calculate_minimum_presses().iter().sum::<u64>()
         });
 
         crate::DayResult { part_1, part_2 }
     }
-}
-
-fn calculate_minimum_presses(buttons: &[Button], target_pattern: &[u64]) -> Vec<u64> {
-    let mut vars = Vec::new();
-    let mut p_vars = ProblemVariables::new();
-
-    for _ in 0..buttons.len() {
-        vars.push(p_vars.add(variable().min(0).integer()));
-    }
-
-    let mut constraints = Vec::new();
-
-    for (index, target) in target_pattern.iter().enumerate() {
-        let mut sum = Expression::default();
-        for (button_index, button) in buttons.iter().enumerate() {
-            if button.toggles.contains(&index) {
-                sum += vars[button_index];
-            }
-        }
-
-        constraints.push(sum.eq(Expression::from(*target as i32)));
-    }
-
-    let mut minimum = Expression::default();
-    for var in &vars {
-        minimum += *var;
-    }
-
-    let mut solver = p_vars.minimise(minimum).using(default_solver);
-
-    for constraint in constraints.clone() {
-        solver = solver.with(constraint);
-    }
-
-    let solution = solver.solve().unwrap();
-
-    let mut result = Vec::new();
-    for var in vars {
-        result.push(solution.value(var) as u64);
-    }
-
-    result
 }
 
 #[derive(Debug)]
@@ -168,5 +124,47 @@ impl MachineManual {
         }
 
         lights == self.target_light_pattern
+    }
+
+    pub fn calculate_minimum_presses(&self) -> Vec<u64> {
+        let mut vars = Vec::new();
+        let mut p_vars = ProblemVariables::new();
+
+        for _ in 0..self.buttons.len() {
+            vars.push(p_vars.add(variable().min(0).integer()));
+        }
+
+        let mut constraints = Vec::new();
+
+        for (index, target) in self.joltage_requirements.iter().enumerate() {
+            let mut sum = Expression::default();
+            for (button_index, button) in self.buttons.iter().enumerate() {
+                if button.toggles.contains(&index) {
+                    sum += vars[button_index];
+                }
+            }
+
+            constraints.push(sum.eq(Expression::from(*target as i32)));
+        }
+
+        let mut minimum = Expression::default();
+        for var in &vars {
+            minimum += *var;
+        }
+
+        let mut solver = p_vars.minimise(minimum).using(default_solver);
+
+        for constraint in constraints.clone() {
+            solver = solver.with(constraint);
+        }
+
+        let solution = solver.solve().unwrap();
+
+        let mut result = Vec::new();
+        for var in vars {
+            result.push(solution.value(var) as u64);
+        }
+
+        result
     }
 }
