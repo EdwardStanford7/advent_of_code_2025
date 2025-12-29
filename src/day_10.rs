@@ -1,4 +1,4 @@
-use crate::memoizer::Memoizer;
+use good_lp::{Expression, ProblemVariables, Solution, SolverModel, default_solver, variable};
 
 pub struct Day10;
 
@@ -10,7 +10,7 @@ impl crate::Day for Day10 {
                 let (lights, rest) = line.trim().split_once(']').unwrap();
                 let (buttons, joltages) = rest.split_once('{').unwrap();
 
-                let indicator_lights = lights
+                let target_light_pattern = lights
                     .split_at(1)
                     .1
                     .chars()
@@ -45,7 +45,7 @@ impl crate::Day for Day10 {
                     .collect();
 
                 MachineManual {
-                    target_light_pattern: indicator_lights,
+                    target_light_pattern,
                     buttons,
                     joltage_requirements,
                 }
@@ -57,25 +57,55 @@ impl crate::Day for Day10 {
             .fold(0, |acc, manual| acc + manual.min_buttons_lights());
 
         let part_2 = manuals.iter().fold(0, |acc, manual| {
-            println!("Finished machine {:?}", manual);
-            acc + manual.min_buttons_joltages()
+            acc + calculate_minimum_presses(&manual.buttons, &manual.joltage_requirements)
+                .iter()
+                .sum::<u64>()
         });
-
-        // println!(
-        //     "Min presses for machine 0: {}",
-        //     manuals[0].min_buttons_joltages()
-        // );
-        // println!(
-        //     "Min presses for machine 1: {}",
-        //     manuals[1].min_buttons_joltages()
-        // );
-        // println!(
-        //     "Min presses for machine 2: {}",
-        //     manuals[2].min_buttons_joltages()
-        // );
 
         crate::DayResult { part_1, part_2 }
     }
+}
+
+fn calculate_minimum_presses(buttons: &[Button], target_pattern: &[u64]) -> Vec<u64> {
+    let mut vars = Vec::new();
+    let mut p_vars = ProblemVariables::new();
+
+    for _ in 0..buttons.len() {
+        vars.push(p_vars.add(variable().min(0).integer()));
+    }
+
+    let mut constraints = Vec::new();
+
+    for (index, target) in target_pattern.iter().enumerate() {
+        let mut sum = Expression::default();
+        for (button_index, button) in buttons.iter().enumerate() {
+            if button.toggles.contains(&index) {
+                sum += vars[button_index];
+            }
+        }
+
+        constraints.push(sum.eq(Expression::from(*target as i32)));
+    }
+
+    let mut minimum = Expression::default();
+    for var in &vars {
+        minimum += *var;
+    }
+
+    let mut solver = p_vars.minimise(minimum).using(default_solver);
+
+    for constraint in constraints.clone() {
+        solver = solver.with(constraint);
+    }
+
+    let solution = solver.solve().unwrap();
+
+    let mut result = Vec::new();
+    for var in vars {
+        result.push(solution.value(var) as u64);
+    }
+
+    result
 }
 
 #[derive(Debug)]
@@ -103,10 +133,6 @@ impl MachineManual {
                     .iter()
                     .fold(0, |acc, &digit| acc + digit as u64);
                 if num_presses < min_presses {
-                    // println!(
-                    //     "Combination {:?} takes {} presses",
-                    //     binary_digits, num_presses
-                    // );
                     min_presses = num_presses;
                 }
             }
@@ -142,72 +168,5 @@ impl MachineManual {
         }
 
         lights == self.target_light_pattern
-    }
-
-    pub fn min_buttons_joltages(&self) -> u64 {
-        let mut memo_table = Memoizer::new();
-        self.calculate_min_buttons(vec![0; self.joltage_requirements.len()], &mut memo_table)
-    }
-
-    // Dynamic programming approach
-    fn calculate_min_buttons(
-        &self,
-        current_joltages: Vec<u64>,
-        memo_table: &mut Memoizer<Vec<u64>, u64>,
-    ) -> u64 {
-        if let Some(cached_result) = memo_table.get(&current_joltages) {
-            return *cached_result;
-        }
-
-        // println!("{:?}", current_joltages);
-
-        if current_joltages
-            .iter()
-            .enumerate()
-            .all(|(index, joltage)| joltage == &self.joltage_requirements[index])
-        {
-            return 0;
-        }
-
-        let mut min_presses = u64::MAX;
-        for button in self.buttons.iter() {
-            let new_joltages = Self::apply_joltages(current_joltages.clone(), button);
-            // If this button would exceed joltages, skip it
-            if self.check_exceeded_joltages(&new_joltages) {
-                continue;
-            }
-
-            let recursive_solution = self.calculate_min_buttons(new_joltages.clone(), memo_table);
-            // If there was no valid solution from this state, skip it
-            if recursive_solution == u64::MAX {
-                continue;
-            }
-
-            // Add 1 for the button we just pressed
-            let current_solution = recursive_solution + 1;
-            if current_solution < min_presses {
-                min_presses = current_solution;
-            }
-        }
-
-        memo_table.insert(current_joltages, min_presses);
-
-        min_presses
-    }
-
-    fn apply_joltages(mut joltages: Vec<u64>, button: &Button) -> Vec<u64> {
-        for &toggle in &button.toggles {
-            joltages[toggle] += 1;
-        }
-        joltages
-    }
-
-    fn check_exceeded_joltages(&self, joltages: &[u64]) -> bool {
-        for (i, &joltage) in joltages.iter().enumerate() {
-            if joltage > self.joltage_requirements[i] {
-                return true;
-            }
-        }
-        false
     }
 }
