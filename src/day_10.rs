@@ -153,6 +153,7 @@ impl MachineManual {
         }
 
         let mut solver = p_vars.minimise(minimum).using(default_solver);
+        solver.set_parameter("log", "0");
 
         for constraint in constraints.clone() {
             solver = solver.with(constraint);
