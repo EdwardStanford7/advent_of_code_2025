@@ -1,5 +1,6 @@
 mod day_1;
 mod day_10;
+mod day_11;
 mod day_2;
 mod day_3;
 mod day_4;
@@ -20,6 +21,7 @@ use day_7::Day7;
 use day_8::Day8;
 use day_9::Day9;
 use day_10::Day10;
+use day_11::Day11;
 
 pub trait Day {
     fn run(input: String) -> DayResult;
@@ -55,6 +57,7 @@ fn main() {
         DayInfo::new(8, Day8::run),
         DayInfo::new(9, Day9::run),
         DayInfo::new(10, Day10::run),
+        DayInfo::new(11, Day11::run),
     ];
 
     for day_info in days {
