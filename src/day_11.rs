@@ -1,4 +1,7 @@
-use std::{collections::HashMap, hash::Hash};
+use std::collections::BTreeMap;
+use std::collections::HashMap;
+use std::collections::HashSet;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 pub struct Day11;
 
@@ -30,33 +33,16 @@ impl crate::Day for Day11 {
 
 #[derive(Debug)]
 struct DiGraph<'a> {
-    vertices: HashMap<&'a str, Vertex<'a>>,
-}
-
-#[derive(Debug, Default, Clone)]
-struct Vertex<'a> {
-    in_degree: u64,
-    neighbors: Vec<&'a str>,
-}
-
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
-struct DFSEntry<'a> {
-    name: &'a str,
-    in_degree: u64,
-    neighbors: Vec<&'a str>,
-    num_paths_through_neither: u64,
-    num_paths_through_dac: u64,
-    num_paths_through_fft: u64,
-    num_paths_through_both: u64,
+    vertices: HashMap<&'a str, Vec<&'a str>>,
 }
 
 impl<'a> DiGraph<'a> {
     pub fn from_edges(edges: &[(&'a str, &'a str)]) -> Self {
-        let mut vertices: HashMap<&str, Vertex<'a>> = HashMap::new();
+        let mut vertices: HashMap<&str, Vec<&'a str>> = HashMap::new();
 
         for &(src, dst) in edges {
-            vertices.entry(src).or_default().neighbors.push(dst);
-            vertices.entry(dst).or_default().in_degree += 1;
+            vertices.entry(src).or_default().push(dst);
+            vertices.entry(dst).or_default();
         }
 
         DiGraph { vertices }
@@ -64,7 +50,7 @@ impl<'a> DiGraph<'a> {
 
     pub fn num_paths(&self, src_vertex: &'a str, dst_vertex: &'a str) -> u64 {
         let mut num_paths = 0;
-        let mut to_visit = self.vertices.get(src_vertex).unwrap().neighbors.clone();
+        let mut to_visit = vec![src_vertex];
 
         while let Some(current_vertex) = to_visit.pop() {
             if current_vertex == dst_vertex {
@@ -72,80 +58,141 @@ impl<'a> DiGraph<'a> {
                 continue;
             }
 
-            for next_vertex in self.vertices.get(current_vertex).unwrap().neighbors.iter() {
-                to_visit.push(*next_vertex);
+            for &next_vertex in self.vertices.get(current_vertex).unwrap().iter() {
+                to_visit.push(next_vertex);
             }
         }
 
         num_paths
     }
 
-    pub fn num_paths_visit_vertices(&self, src_vertex: &'a str, dst_vertex: &'a str) -> u64 {
-        let mut vertices_to_process = vec![DFSEntry {
-            name: src_vertex,
-            in_degree: self.vertices.get(src_vertex).unwrap().in_degree,
-            neighbors: self.vertices.get(src_vertex).unwrap().neighbors.clone(),
-            num_paths_through_neither: 1,
-            num_paths_through_dac: 0,
-            num_paths_through_fft: 0,
-            num_paths_through_both: 0,
-        }];
+    fn num_paths_visit_vertices(&'a self, src_vertex: &'a str, dst_vertex: &'a str) -> u64 {
+        let vertices = self.calculate_in_degrees(&self.get_reachable(src_vertex));
 
-        while let Some(vertex) = vertices_to_process
-            .iter()
-            .min_by(|a, b| a.in_degree.cmp(&b.in_degree))
-            .cloned()
-        {
-            if vertex.name == dst_vertex {
-                return vertex.num_paths_through_both;
+        let mut priority_queue = BTreeMap::new();
+        let mut src_entry = SearchEntry::new(
+            src_vertex,
+            vertices.get(src_vertex).unwrap().1,
+            &vertices.get(src_vertex).unwrap().0,
+        );
+        src_entry.npaths_neither = 1;
+        priority_queue.insert(src_vertex, src_entry);
+
+        while let Some(current) = priority_queue.values().min().cloned() {
+            if current.name == dst_vertex {
+                return current.npaths_both;
             }
 
-            for neighbor in &vertex.neighbors {
-                let entry = vertices_to_process
-                    .iter_mut()
-                    .find(|entry| entry.name == *neighbor);
-                let entry = if let Some(entry) = entry {
-                    entry
-                } else {
-                    vertices_to_process.push(DFSEntry {
-                        name: neighbor,
-                        in_degree: self.vertices.get(neighbor).unwrap().in_degree,
-                        neighbors: self.vertices.get(neighbor).unwrap().neighbors.clone(),
-                        num_paths_through_neither: 0,
-                        num_paths_through_dac: 0,
-                        num_paths_through_fft: 0,
-                        num_paths_through_both: 0,
-                    });
-                    vertices_to_process.last_mut().unwrap()
-                };
-
-                if *neighbor == "dac" {
-                    entry.num_paths_through_dac +=
-                        vertex.num_paths_through_neither + vertex.num_paths_through_dac;
-                    entry.num_paths_through_both +=
-                        vertex.num_paths_through_fft + vertex.num_paths_through_both;
-                } else if *neighbor == "fft" {
-                    entry.num_paths_through_fft +=
-                        vertex.num_paths_through_neither + vertex.num_paths_through_fft;
-                    entry.num_paths_through_both +=
-                        vertex.num_paths_through_dac + vertex.num_paths_through_both;
-                } else {
-                    entry.num_paths_through_neither += vertex.num_paths_through_neither;
-                    entry.num_paths_through_dac += vertex.num_paths_through_dac;
-                    entry.num_paths_through_fft += vertex.num_paths_through_fft;
-                    entry.num_paths_through_both += vertex.num_paths_through_both;
-                }
+            for &neighbor in current.neighbors {
+                let entry = priority_queue.entry(neighbor).or_insert(SearchEntry::new(
+                    neighbor,
+                    vertices.get(neighbor).unwrap().1,
+                    &vertices.get(neighbor).unwrap().0,
+                ));
 
                 entry.in_degree -= 1;
+
+                if neighbor == "dac" {
+                    entry.npaths_dac += current.npaths_neither + current.npaths_dac;
+                    entry.npaths_both += current.npaths_fft + current.npaths_both;
+                } else if neighbor == "fft" {
+                    entry.npaths_fft += current.npaths_neither + current.npaths_fft;
+                    entry.npaths_both += current.npaths_dac + current.npaths_both;
+                } else {
+                    entry.npaths_neither += current.npaths_neither;
+                    entry.npaths_dac += current.npaths_dac;
+                    entry.npaths_fft += current.npaths_fft;
+                    entry.npaths_both += current.npaths_both;
+                }
             }
 
-            let index = vertices_to_process
-                .iter()
-                .position(|v| v.name == vertex.name)
-                .unwrap();
-            vertices_to_process.remove(index);
+            priority_queue.remove(current.name);
         }
 
-        panic!("Shouldn't reach here")
+        unreachable!()
+    }
+
+    fn get_reachable(&self, src_vertex: &'a str) -> HashSet<&'a str> {
+        let mut reachable = HashSet::new();
+
+        let mut to_visit = vec![src_vertex];
+
+        while let Some(current_vertex) = to_visit.pop() {
+            reachable.insert(current_vertex);
+            for &next_vertex in self.vertices.get(current_vertex).unwrap().iter() {
+                if reachable.contains(next_vertex) {
+                    continue;
+                }
+                to_visit.push(next_vertex);
+            }
+        }
+
+        reachable
+    }
+
+    fn calculate_in_degrees(
+        &self,
+        reachable: &HashSet<&'a str>,
+    ) -> HashMap<&'a str, (Vec<&'a str>, u64)> {
+        let mut vertices = HashMap::new();
+
+        for &vertex in reachable {
+            vertices.entry(vertex).or_insert((Vec::new(), 0));
+            for &neighbor in self.vertices.get(vertex).unwrap() {
+                vertices.entry(neighbor).or_insert((Vec::new(), 0));
+            }
+        }
+
+        for &vertex in reachable {
+            for &neighbor in self.vertices.get(vertex).unwrap() {
+                vertices.get_mut(vertex).unwrap().0.push(neighbor);
+                vertices.get_mut(neighbor).unwrap().1 += 1;
+            }
+        }
+
+        vertices
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct SearchEntry<'a> {
+    name: &'a str,
+    in_degree: u64,
+    order: u64,
+    neighbors: &'a [&'a str],
+    npaths_neither: u64,
+    npaths_dac: u64,
+    npaths_fft: u64,
+    npaths_both: u64,
+}
+
+impl<'a> SearchEntry<'a> {
+    fn new(name: &'a str, in_degree: u64, neighbors: &'a [&'a str]) -> Self {
+        static ORDER_COUNTER: AtomicU64 = AtomicU64::new(0);
+        let order = ORDER_COUNTER.fetch_add(1, Ordering::Relaxed);
+        SearchEntry {
+            name,
+            in_degree,
+            order,
+            neighbors,
+            npaths_neither: 0,
+            npaths_dac: 0,
+            npaths_fft: 0,
+            npaths_both: 0,
+        }
+    }
+}
+
+impl Ord for SearchEntry<'_> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.in_degree
+            .cmp(&other.in_degree)
+            .then_with(|| self.order.cmp(&other.order))
+    }
+}
+
+impl PartialOrd for SearchEntry<'_> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
     }
 }
