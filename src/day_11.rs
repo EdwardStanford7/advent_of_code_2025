@@ -1,7 +1,6 @@
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::collections::HashSet;
-use std::sync::atomic::{AtomicU64, Ordering};
 
 pub struct Day11;
 
@@ -158,7 +157,6 @@ impl<'a> DiGraph<'a> {
 struct SearchEntry<'a> {
     name: &'a str,
     in_degree: u64,
-    order: u64,
     neighbors: &'a [&'a str],
     npaths_neither: u64,
     npaths_dac: u64,
@@ -168,12 +166,9 @@ struct SearchEntry<'a> {
 
 impl<'a> SearchEntry<'a> {
     fn new(name: &'a str, in_degree: u64, neighbors: &'a [&'a str]) -> Self {
-        static ORDER_COUNTER: AtomicU64 = AtomicU64::new(0);
-        let order = ORDER_COUNTER.fetch_add(1, Ordering::Relaxed);
         SearchEntry {
             name,
             in_degree,
-            order,
             neighbors,
             npaths_neither: 0,
             npaths_dac: 0,
@@ -185,9 +180,7 @@ impl<'a> SearchEntry<'a> {
 
 impl Ord for SearchEntry<'_> {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.in_degree
-            .cmp(&other.in_degree)
-            .then_with(|| self.order.cmp(&other.order))
+        self.in_degree.cmp(&other.in_degree)
     }
 }
 
